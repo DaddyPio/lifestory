@@ -3,9 +3,10 @@ import Welcome from './components/Welcome';
 import EntryInput from './components/EntryInput';
 import EntryList from './components/EntryList';
 import Biography from './components/Biography';
+import Timeline from './components/Timeline';
 import { LifeEntry, BiographyState } from './types';
 
-export type Step = 'welcome' | 'input' | 'list' | 'biography';
+export type Step = 'welcome' | 'input' | 'list' | 'timeline' | 'biography';
 
 function App() {
   const [step, setStep] = useState<Step>('welcome');
@@ -134,6 +135,16 @@ function App() {
               所有記錄 ({entries.length})
             </button>
             <button
+              onClick={() => setStep('timeline')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                step === 'timeline'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              時間軸
+            </button>
+            <button
               onClick={() => setStep('biography')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 step === 'biography'
@@ -179,6 +190,17 @@ function App() {
             entries={entries}
             onDelete={handleDeleteEntry}
             onEdit={handleEditEntry}
+          />
+        )}
+
+        {step === 'timeline' && (
+          <Timeline
+            entries={entries}
+            onEntryClick={() => {
+              // 點擊時間軸項目時，可以跳轉到編輯或顯示詳情
+              setStep('list');
+              // 可以添加滾動到特定項目的功能
+            }}
           />
         )}
 
