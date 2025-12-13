@@ -60,8 +60,17 @@ export default function Biography({
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       });
 
-      // 建立時間軸描述
-      const timelineDescription = sortedEntries
+      // 確保使用所有記錄（不過濾任何內容）
+      const allEntries = sortedEntries.filter(entry => entry.content && entry.content.trim().length > 0);
+      
+      if (allEntries.length === 0) {
+        setError('沒有有效的記錄內容，請先記錄一些生活片段');
+        setIsGenerating(false);
+        return;
+      }
+
+      // 建立時間軸描述（包含所有記錄）
+      const timelineDescription = allEntries
         .map((entry, index) => {
           let timeLabel = '';
           if (entry.age) {
@@ -72,27 +81,29 @@ export default function Biography({
             timeLabel = `記錄 ${index + 1}`;
           }
           
-          return `【${timeLabel}】\n${entry.content}`;
+          return `【${timeLabel}】\n${entry.content.trim()}`;
         })
         .join('\n\n');
 
-      // 建立 prompt
-      const prompt = `請根據以下生活片段，撰寫一篇完整的個人自傳。要求：
+      // 建立 prompt（明確要求整合所有內容）
+      const prompt = `請根據以下 ${allEntries.length} 個生活片段，撰寫一篇完整的個人自傳。
 
-1. 使用第一人稱（我）
-2. 風格溫暖、有故事感，但清楚、有段落
-3. 按照時間順序組織內容
-4. 將不同時期的內容自然融合，形成流暢的敘事
-5. 長度約 1000-1500 字
-6. 以段落方式呈現，每個段落之間空一行
-7. 如果內容有更新，請整合新舊內容，保持敘事的連貫性
+**重要要求：**
+1. **必須整合所有 ${allEntries.length} 個生活片段的內容**，不能遺漏任何一個
+2. 使用第一人稱（我）
+3. 風格溫暖、有故事感，但清楚、有段落
+4. 按照時間順序組織內容（從最早到最晚）
+5. 將不同時期的內容自然融合，形成流暢的敘事
+6. 長度約 1000-1500 字
+7. 以段落方式呈現，每個段落之間空一行
+8. 確保每個生活片段的主要內容都有在自傳中體現
 
-生活片段：
+**生活片段（共 ${allEntries.length} 個）：**
 ${timelineDescription}
 
-${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內容：\n' + biography.content : ''}
+${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎上整合所有新舊內容，確保包含上述所有 ${allEntries.length} 個生活片段：\n${biography.content}\n\n請更新自傳，確保包含所有內容。` : ''}
 
-請開始撰寫或更新個人自傳：`;
+請開始撰寫個人自傳，確保整合所有 ${allEntries.length} 個生活片段：`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -106,7 +117,7 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
             {
               role: 'system',
               content:
-                '你是一位專業的傳記作家，擅長將生活片段轉化為溫暖、有故事感的個人傳記。你善於整合新舊內容，保持敘事的連貫性和流暢性。',
+                '你是一位專業的傳記作家，擅長將生活片段轉化為溫暖、有故事感的個人傳記。你善於整合新舊內容，保持敘事的連貫性和流暢性。**重要：你必須確保整合所有提供的生活片段，不能遺漏任何內容。**',
             },
             {
               role: 'user',
@@ -152,10 +163,11 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
         throw new Error('未收到生成內容');
       }
 
+      // 確保保存所有使用的 entry IDs
       const newBiography: BiographyState = {
         content,
         lastUpdated: new Date(),
-        entryIds: entries.map((e) => e.id),
+        entryIds: allEntries.map((e) => e.id), // 使用實際用於生成的所有 entry IDs
       };
 
       onBiographyUpdate(newBiography);
