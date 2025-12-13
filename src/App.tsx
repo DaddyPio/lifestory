@@ -112,7 +112,7 @@ function App() {
       <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900">人生小傳 MVP</h1>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setStep('input')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -142,6 +142,19 @@ function App() {
               }`}
             >
               我的自傳
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('確定要重新輸入 API Key 嗎？')) {
+                  localStorage.removeItem('lifeStory-openai-key');
+                  setApiKey('');
+                  setStep('welcome');
+                }
+              }}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              title="重新輸入 API Key"
+            >
+              ⚙️
             </button>
           </div>
         </div>

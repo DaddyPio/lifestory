@@ -49,7 +49,7 @@ export default function Welcome({ apiKey, onApiKeyChange, onStart }: WelcomeProp
                 </span>
                 <br />
                 <span className="text-gray-400">
-                  ⚠️ 只需輸入一次，之後會自動記住。
+                  ⚠️ 只需輸入一次，之後會自動記住。如需重新輸入，請點擊右上角的 ⚙️ 圖示。
                 </span>
               </p>
             </div>
@@ -59,7 +59,7 @@ export default function Welcome({ apiKey, onApiKeyChange, onStart }: WelcomeProp
               disabled={!apiKey.trim()}
               className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              開始訪談
+              開始使用
             </button>
           </form>
         </div>
