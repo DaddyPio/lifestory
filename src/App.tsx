@@ -1,27 +1,29 @@
 import { useState, useEffect } from 'react';
-import Welcome from './components/Welcome';
 import EntryInput from './components/EntryInput';
 import EntryList from './components/EntryList';
 import Biography from './components/Biography';
 import Timeline from './components/Timeline';
 import { LifeEntry, BiographyState } from './types';
 
-export type Step = 'welcome' | 'input' | 'list' | 'timeline' | 'biography';
+export type Step = 'input' | 'list' | 'timeline' | 'biography';
 
 function App() {
-  const [step, setStep] = useState<Step>('welcome');
-  const [apiKey, setApiKey] = useState<string>('');
+  // 從環境變數讀取 API Key
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+  
+  const [step, setStep] = useState<Step>('input');
   const [entries, setEntries] = useState<LifeEntry[]>([]);
   const [biography, setBiography] = useState<BiographyState | null>(null);
 
+  // 檢查 API Key 是否設定
+  useEffect(() => {
+    if (!apiKey) {
+      console.error('VITE_OPENAI_API_KEY 未設定，請在環境變數中設定');
+    }
+  }, [apiKey]);
+
   // 從 localStorage 載入數據
   useEffect(() => {
-    const savedKey = localStorage.getItem('lifeStory-openai-key');
-    if (savedKey) {
-      setApiKey(savedKey);
-      setStep('input');
-    }
-
     const savedEntries = localStorage.getItem('lifeStory-entries');
     if (savedEntries) {
       try {
@@ -59,16 +61,6 @@ function App() {
     }
   }, [biography]);
 
-  // 儲存 API Key 到 localStorage
-  const handleApiKeyChange = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('lifeStory-openai-key', key);
-  };
-
-  // 開始使用
-  const handleStart = () => {
-    setStep('input');
-  };
 
   // 保存新的生活片段
   const handleSaveEntry = async (entryData: Omit<LifeEntry, 'id' | 'timestamp' | 'createdAt'>) => {
@@ -154,38 +146,29 @@ function App() {
             >
               我的自傳
             </button>
-            <button
-              onClick={() => {
-                if (confirm('確定要重新輸入 API Key 嗎？')) {
-                  localStorage.removeItem('lifeStory-openai-key');
-                  setApiKey('');
-                  setStep('welcome');
-                }
-              }}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-              title="重新輸入 API Key"
-            >
-              ⚙️
-            </button>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {step === 'welcome' && (
-          <Welcome
-            apiKey={apiKey}
-            onApiKeyChange={handleApiKeyChange}
-            onStart={handleStart}
-          />
+        {!apiKey && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">API Key 未設定</h2>
+            <p className="text-red-600 mb-4">
+              請在環境變數中設定 <code className="bg-red-100 px-2 py-1 rounded">VITE_OPENAI_API_KEY</code>
+            </p>
+            <p className="text-sm text-red-500">
+              部署時請在 Vercel 項目設置中添加環境變數
+            </p>
+          </div>
         )}
 
-        {step === 'input' && (
+        {apiKey && step === 'input' && (
           <EntryInput onSave={handleSaveEntry} />
         )}
 
-        {step === 'list' && (
+        {apiKey && step === 'list' && (
           <EntryList
             entries={entries}
             onDelete={handleDeleteEntry}
@@ -193,7 +176,7 @@ function App() {
           />
         )}
 
-        {step === 'timeline' && (
+        {apiKey && step === 'timeline' && (
           <Timeline
             entries={entries}
             onEntryClick={() => {
@@ -204,7 +187,7 @@ function App() {
           />
         )}
 
-        {step === 'biography' && (
+        {apiKey && step === 'biography' && (
           <Biography
             entries={entries}
             apiKey={apiKey}

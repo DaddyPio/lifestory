@@ -26,13 +26,29 @@ Vercel 提供免費的 HTTPS 和全球 CDN，非常適合部署 Vite + React 應
    - **Root Directory**: `lifestory`（如果倉庫根目錄不是 lifestory）
    - **Build Command**: `npm run build`（自動檢測）
    - **Output Directory**: `dist`（自動檢測）
-5. 點擊 "Deploy"
 
-### 步驟 3：部署完成
+### 步驟 3：設定環境變數（重要！）
+
+在部署前或部署後，必須設定 OpenAI API Key：
+
+1. 在 Vercel 項目頁面，點擊 "Settings" → "Environment Variables"
+2. 添加環境變數：
+   - **Name**: `VITE_OPENAI_API_KEY`
+   - **Value**: 你的 OpenAI API Key（例如：`sk-...`）
+   - **Environment**: 選擇所有環境（Production, Preview, Development）
+3. 點擊 "Save"
+4. 如果已經部署，需要重新部署才能生效（點擊 "Deployments" → 選擇最新的部署 → "Redeploy"）
+
+### 步驟 4：部署
+
+1. 點擊 "Deploy"
+2. 等待部署完成
+
+### 步驟 5：部署完成
 
 部署完成後，Vercel 會給你一個 URL（例如：`https://lifestory-mvp.vercel.app`）
 
-### 步驟 4：在手機上使用
+### 步驟 6：在手機上使用
 
 - 在手機瀏覽器中訪問你的 Vercel URL
 - 可以添加到主屏幕（iOS Safari：分享 → 加入主畫面；Android Chrome：選單 → 加入主畫面）
@@ -118,19 +134,40 @@ ngrok http 5173
 
 ## 重要配置
 
-### 1. HTTPS 要求
+### 1. 環境變數設定
+
+**必須設定以下環境變數：**
+
+- `VITE_OPENAI_API_KEY`: 你的 OpenAI API Key
+
+**在 Vercel 設定環境變數：**
+1. 前往項目 Settings → Environment Variables
+2. 添加 `VITE_OPENAI_API_KEY` 並填入你的 API Key
+3. 選擇所有環境（Production, Preview, Development）
+4. 保存後重新部署
+
+**本地開發設定：**
+1. 複製 `.env.local.example` 為 `.env.local`
+2. 填入你的 API Key
+3. 重新啟動開發伺服器
+
+### 2. HTTPS 要求
 
 - 語音錄製功能需要 HTTPS
 - Vercel、Netlify 等平台自動提供 HTTPS
 - 如果使用自定義域名，確保配置了 SSL 證書
 
-### 2. API Key 安全
+### 3. API Key 安全
 
-⚠️ **重要**：此應用程式在前端直接使用 OpenAI API Key，僅適合個人使用。
+⚠️ **重要**：此應用程式在前端直接使用 OpenAI API Key。
 
-- API Key 會儲存在使用者的瀏覽器 LocalStorage 中
-- 不建議在公開環境中部署，除非你了解安全風險
-- 如需公開部署，建議使用後端 API 來處理 OpenAI 請求
+- API Key 會在構建時注入到前端代碼中
+- 任何人都可以在瀏覽器中查看 API Key
+- 建議：
+  - 使用 API Key 的額度限制功能
+  - 定期輪換 API Key
+  - 監控 API 使用量
+  - 如需更安全，建議使用後端 API 來處理 OpenAI 請求
 
 ---
 
