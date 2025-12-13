@@ -104,7 +104,10 @@ function App() {
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">人生小傳 MVP</h1>
+          <div className="flex items-center gap-2">
+            <img src="/logo.svg" alt="My story" className="w-8 h-8" />
+            <h1 className="text-lg font-semibold text-gray-900">My story</h1>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setStep('input')}
