@@ -47,16 +47,45 @@ export default function Biography({
     setError('');
 
     try {
-      // 按時間排序（年紀或時期，如果都沒有則按輸入時間）
+      // 按時間排序（優先使用年紀或時期，而不是輸入時間）
       const sortedEntries = [...entries].sort((a, b) => {
-        // 優先按年紀排序
+        // 優先按年紀排序（年紀是數值，可以直接比較）
         if (a.age !== undefined && b.age !== undefined) {
           return a.age - b.age;
         }
-        if (a.age !== undefined) return -1;
+        if (a.age !== undefined) return -1; // 有年紀的排在前面
         if (b.age !== undefined) return 1;
+
+        // 如果都沒有年紀，嘗試按時期排序
+        if (a.period && b.period) {
+          // 定義時期的優先順序
+          const periodOrder: { [key: string]: number } = {
+            '幼兒時期': 1,
+            '小學時期': 2,
+            '國中時期': 3,
+            '高中時期': 4,
+            '大學時期': 5,
+            '研究所時期': 6,
+            '工作初期': 7,
+            '工作中期': 8,
+            '工作後期': 9,
+            '退休時期': 10,
+          };
+          
+          const aOrder = periodOrder[a.period] || 999;
+          const bOrder = periodOrder[b.period] || 999;
+          
+          if (aOrder !== bOrder) {
+            return aOrder - bOrder;
+          }
+          
+          // 如果不在預定義列表中，按字母順序
+          return a.period.localeCompare(b.period, 'zh-TW');
+        }
+        if (a.period) return -1;
+        if (b.period) return 1;
         
-        // 其次按輸入時間排序
+        // 如果都沒有年紀和時期，才按輸入時間排序（作為最後的排序依據）
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       });
 

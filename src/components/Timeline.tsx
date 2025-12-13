@@ -6,30 +6,64 @@ interface TimelineProps {
 }
 
 export default function Timeline({ entries, onEntryClick }: TimelineProps) {
-  // 按時間排序（年紀或時期，如果都沒有則按輸入時間）
+  // 按時間排序（優先使用年紀或時期，而不是輸入時間）
   const sortedEntries = [...entries]
     .filter((entry) => entry.content && entry.content.trim().length > 0)
     .sort((a, b) => {
-      // 優先按年紀排序
+      // 優先按年紀排序（年紀是數值，可以直接比較）
       if (a.age !== undefined && b.age !== undefined) {
         return a.age - b.age;
       }
-      if (a.age !== undefined) return -1;
+      if (a.age !== undefined) return -1; // 有年紀的排在前面
       if (b.age !== undefined) return 1;
 
-      // 其次按輸入時間排序
+      // 如果都沒有年紀，嘗試從時期中提取數值（例如："大學時期"、"高中時期"）
+      // 這裡可以根據時期名稱進行排序，但為了簡單起見，先按時期名稱字母順序
+      if (a.period && b.period) {
+        // 定義時期的優先順序（可以根據需要調整）
+        const periodOrder: { [key: string]: number } = {
+          '幼兒時期': 1,
+          '小學時期': 2,
+          '國中時期': 3,
+          '高中時期': 4,
+          '大學時期': 5,
+          '研究所時期': 6,
+          '工作初期': 7,
+          '工作中期': 8,
+          '工作後期': 9,
+          '退休時期': 10,
+        };
+        
+        const aOrder = periodOrder[a.period] || 999;
+        const bOrder = periodOrder[b.period] || 999;
+        
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+        
+        // 如果不在預定義列表中，按字母順序
+        return a.period.localeCompare(b.period, 'zh-TW');
+      }
+      if (a.period) return -1;
+      if (b.period) return 1;
+
+      // 如果都沒有年紀和時期，才按輸入時間排序（作為最後的排序依據）
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
-  // 獲取時間標籤
-  const getTimeLabel = (entry: LifeEntry, index: number): string => {
+  // 獲取時間標籤（優先顯示年紀或時期）
+  const getTimeLabel = (entry: LifeEntry): string => {
     if (entry.age !== undefined) {
       return `${entry.age} 歲`;
     }
     if (entry.period) {
       return entry.period;
     }
-    return `記錄 ${index + 1}`;
+    // 如果都沒有，顯示輸入日期（而不是記錄編號）
+    return new Date(entry.createdAt).toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: 'short',
+    });
   };
 
 
@@ -64,7 +98,7 @@ export default function Timeline({ entries, onEntryClick }: TimelineProps) {
         {/* 時間軸項目 */}
         <div className="space-y-8">
           {sortedEntries.map((entry, index) => {
-            const timeLabel = getTimeLabel(entry, index);
+            const timeLabel = getTimeLabel(entry);
             const colorClass = colors[index % colors.length];
             const isEven = index % 2 === 0;
 
@@ -87,7 +121,7 @@ export default function Timeline({ entries, onEntryClick }: TimelineProps) {
                     {timeLabel}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {new Date(entry.createdAt).toLocaleDateString('zh-TW', {
+                    記錄於 {new Date(entry.createdAt).toLocaleDateString('zh-TW', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
@@ -127,15 +161,11 @@ export default function Timeline({ entries, onEntryClick }: TimelineProps) {
       <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm text-gray-600">
           <span>共 {sortedEntries.length} 個記錄</span>
-          <span>
-            時間跨度：
             {sortedEntries.length > 0 && (
-              <>
-                {getTimeLabel(sortedEntries[0], 0)} -{' '}
-                {getTimeLabel(sortedEntries[sortedEntries.length - 1], sortedEntries.length - 1)}
-              </>
+              <span>
+                時間跨度：{getTimeLabel(sortedEntries[0])} - {getTimeLabel(sortedEntries[sortedEntries.length - 1])}
+              </span>
             )}
-          </span>
         </div>
       </div>
     </div>
