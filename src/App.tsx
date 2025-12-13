@@ -182,6 +182,7 @@ function App() {
         {apiKey && step === 'timeline' && (
           <Timeline
             entries={entries}
+            apiKey={apiKey}
             onEntryClick={() => {
               // 點擊時間軸項目時，可以跳轉到編輯或顯示詳情
               setStep('list');
