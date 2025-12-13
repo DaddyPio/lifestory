@@ -318,10 +318,53 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
                       });
                     }
 
-                    // 截取內容前 50 字作為摘要
-                    const summary = entry.content.length > 50 
-                      ? entry.content.substring(0, 50) + '...' 
-                      : entry.content;
+                    // 生成簡明扼要的摘要（智能提取關鍵信息）
+                    const generateSummary = (content: string): string => {
+                      // 移除多餘的空白和換行
+                      const cleanContent = content.trim().replace(/\s+/g, ' ');
+                      
+                      // 如果內容很短（少於 25 字），直接返回
+                      if (cleanContent.length <= 25) {
+                        return cleanContent;
+                      }
+                      
+                      // 優先提取第一句話（通常在句號、問號、驚嘆號處結束）
+                      const firstSentenceMatch = cleanContent.match(/^[^。！？]{1,30}[。！？]/);
+                      if (firstSentenceMatch) {
+                        const firstSentence = firstSentenceMatch[0];
+                        // 如果第一句話在 25 字以內，直接返回
+                        if (firstSentence.length <= 25) {
+                          return firstSentence;
+                        }
+                        // 如果第一句話太長，截取前 25 字
+                        return firstSentence.substring(0, 25) + '...';
+                      }
+                      
+                      // 如果沒有找到完整句子，嘗試在逗號處截斷
+                      const firstCommaMatch = cleanContent.match(/^[^，]{1,25}[，]/);
+                      if (firstCommaMatch) {
+                        return firstCommaMatch[0] + '...';
+                      }
+                      
+                      // 最後，截取前 25 字，並在合適的位置截斷
+                      let summary = cleanContent.substring(0, 25);
+                      
+                      // 嘗試在最後一個標點符號處截斷
+                      const lastPunctuation = Math.max(
+                        summary.lastIndexOf('，'),
+                        summary.lastIndexOf('。'),
+                        summary.lastIndexOf('、')
+                      );
+                      
+                      if (lastPunctuation > 15) {
+                        summary = summary.substring(0, lastPunctuation + 1);
+                      }
+                      
+                      return summary + '...';
+                    };
+                    
+                    // 使用已保存的摘要，或生成新摘要
+                    const summary = entry.summary || generateSummary(entry.content);
 
                     return (
                       <div
@@ -331,7 +374,7 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
                         <div className="flex-shrink-0 w-20 text-sm font-medium text-gray-600">
                           {timeLabel}
                         </div>
-                        <div className="flex-1 text-sm text-gray-700">
+                        <div className="flex-1 text-sm text-gray-700 line-clamp-2">
                           {summary}
                         </div>
                       </div>

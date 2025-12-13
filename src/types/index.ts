@@ -8,6 +8,7 @@ export interface LifeEntry {
   period?: string; // 時期（例如：大學時期、高中時期）
   timestamp: Date; // 輸入時間
   createdAt: string; // ISO 字串，用於保存
+  summary?: string; // 摘要（可選，用於快速顯示）
 }
 
 /**
