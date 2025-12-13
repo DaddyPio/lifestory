@@ -273,7 +273,77 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
 
         {!isGenerating && biography && (
           <div className="space-y-6">
+            {/* 時間軸摘要 */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">時間軸摘要</h2>
+              <div className="space-y-3">
+                {(() => {
+                  // 按時間排序（年紀或時期）
+                  const sortedEntries = [...entries]
+                    .filter((entry) => entry.content && entry.content.trim().length > 0)
+                    .sort((a, b) => {
+                      if (a.age !== undefined && b.age !== undefined) {
+                        return a.age - b.age;
+                      }
+                      if (a.age !== undefined) return -1;
+                      if (b.age !== undefined) return 1;
+                      
+                      if (a.period && b.period) {
+                        const periodOrder: { [key: string]: number } = {
+                          '幼兒時期': 1, '小學時期': 2, '國中時期': 3, '高中時期': 4,
+                          '大學時期': 5, '研究所時期': 6, '工作初期': 7, '工作中期': 8,
+                          '工作後期': 9, '退休時期': 10,
+                        };
+                        const aOrder = periodOrder[a.period] || 999;
+                        const bOrder = periodOrder[b.period] || 999;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.period.localeCompare(b.period, 'zh-TW');
+                      }
+                      if (a.period) return -1;
+                      if (b.period) return 1;
+                      
+                      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                    });
+
+                  return sortedEntries.map((entry) => {
+                    let timeLabel = '';
+                    if (entry.age !== undefined) {
+                      timeLabel = `${entry.age} 歲`;
+                    } else if (entry.period) {
+                      timeLabel = entry.period;
+                    } else {
+                      timeLabel = new Date(entry.createdAt).toLocaleDateString('zh-TW', {
+                        year: 'numeric',
+                        month: 'short',
+                      });
+                    }
+
+                    // 截取內容前 50 字作為摘要
+                    const summary = entry.content.length > 50 
+                      ? entry.content.substring(0, 50) + '...' 
+                      : entry.content;
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0"
+                      >
+                        <div className="flex-shrink-0 w-20 text-sm font-medium text-gray-600">
+                          {timeLabel}
+                        </div>
+                        <div className="flex-1 text-sm text-gray-700">
+                          {summary}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* 自傳內容 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 md:p-8">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">完整自傳</h2>
               <div className="prose max-w-none">
                 {biography.content.split('\n\n').map((paragraph, index) => (
                   <p
