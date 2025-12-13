@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LifeEntry, BiographyState } from '../types';
+import { extractTimelineFromBiography } from '../services/timelineExtractor';
 
 interface BiographyProps {
   entries: LifeEntry[];
@@ -192,11 +193,21 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
         throw new Error('未收到生成內容');
       }
 
+      // 從自傳內容中提取時間軸記事
+      let timelineItems: BiographyState['timelineItems'] = [];
+      try {
+        timelineItems = await extractTimelineFromBiography(apiKey, content);
+      } catch (error) {
+        console.error('提取時間軸失敗:', error);
+        // 即使提取失敗，也繼續保存自傳
+      }
+
       // 確保保存所有使用的 entry IDs
       const newBiography: BiographyState = {
         content,
         lastUpdated: new Date(),
         entryIds: allEntries.map((e) => e.id), // 使用實際用於生成的所有 entry IDs
+        timelineItems, // 保存提取的時間軸記事
       };
 
       onBiographyUpdate(newBiography);

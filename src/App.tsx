@@ -183,6 +183,7 @@ function App() {
           <Timeline
             entries={entries}
             apiKey={apiKey}
+            biography={biography}
             onEntryClick={() => {
               // 點擊時間軸項目時，可以跳轉到編輯或顯示詳情
               setStep('list');
