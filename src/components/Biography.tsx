@@ -31,7 +31,7 @@ export default function Biography({
 
   // 自動生成或更新自傳
   useEffect(() => {
-    if (entries.length > 0 && apiKey && needsRegeneration()) {
+    if (entries.length > 0 && apiKey && apiKey.trim() && needsRegeneration()) {
       generateBiography();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,7 +98,7 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey.trim()}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
@@ -116,13 +116,33 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
           temperature: 0.7,
           max_tokens: 2500,
         }),
+      }).catch((fetchError) => {
+        // 處理網路錯誤
+        if (fetchError instanceof TypeError && fetchError.message === 'Failed to fetch') {
+          throw new Error('無法連接到 OpenAI API。請檢查：\n1. 網路連線是否正常\n2. API Key 是否正確\n3. 瀏覽器是否允許跨域請求');
+        }
+        throw fetchError;
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error?.message || `API 錯誤：${response.status} ${response.statusText}`
-        );
+        let errorMessage = `API 錯誤：${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+            // 常見錯誤的友好提示
+            if (errorMessage.includes('Invalid API key')) {
+              errorMessage = 'API Key 無效，請檢查是否正確輸入';
+            } else if (errorMessage.includes('insufficient_quota')) {
+              errorMessage = 'API Key 餘額不足，請充值後再試';
+            } else if (errorMessage.includes('rate_limit')) {
+              errorMessage = '請求過於頻繁，請稍後再試';
+            }
+          }
+        } catch (e) {
+          // 無法解析錯誤回應，使用預設訊息
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -140,7 +160,16 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
 
       onBiographyUpdate(newBiography);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '生成傳記時發生錯誤');
+      console.error('生成自傳錯誤:', err);
+      let errorMessage = '生成傳記時發生錯誤';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -183,13 +212,21 @@ ${biography ? '\n以下是之前生成的自傳，請在此基礎上整合新內
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-            <p className="text-sm text-red-800">{error}</p>
-            <button
-              onClick={generateBiography}
-              className="mt-2 text-sm text-red-600 hover:text-red-700 underline"
-            >
-              重試
-            </button>
+            <p className="text-sm text-red-800 whitespace-pre-line">{error}</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={generateBiography}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+              >
+                重試
+              </button>
+              <button
+                onClick={() => setError('')}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
+              >
+                關閉
+              </button>
+            </div>
           </div>
         )}
 
