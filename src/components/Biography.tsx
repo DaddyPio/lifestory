@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LifeEntry, BiographyState } from '../types';
 import { extractTimelineFromBiography } from '../services/timelineExtractor';
+import { generateSummary } from '../services/summaryService';
 
 interface BiographyProps {
   entries: LifeEntry[];
@@ -18,6 +19,8 @@ export default function Biography({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [timelineSummaries, setTimelineSummaries] = useState<{ [key: string]: string }>({});
+  const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
 
   // 檢查是否需要重新生成
   const needsRegeneration = () => {
@@ -37,6 +40,58 @@ export default function Biography({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, apiKey]);
+
+  // 為時間軸摘要生成 AI 摘要
+  useEffect(() => {
+    if (!apiKey || !biography || entries.length === 0) return;
+
+    const generateTimelineSummaries = async () => {
+      setIsGeneratingSummaries(true);
+      const newSummaries: { [key: string]: string } = {};
+
+      // 過濾出需要生成摘要的條目（沒有摘要或內容較長）
+      const entriesToSummarize = entries.filter(
+        (entry) => 
+          entry.content && 
+          entry.content.trim().length > 20 && 
+          !entry.summary &&
+          !timelineSummaries[entry.id]
+      );
+
+      for (const entry of entriesToSummarize) {
+        try {
+          const summary = await generateSummary({
+            apiKey,
+            content: entry.content,
+            maxLength: 20, // 限制為20個中文字
+          });
+          newSummaries[entry.id] = summary;
+        } catch (error) {
+          console.error(`為條目 ${entry.id} 生成摘要失敗:`, error);
+          // 如果生成失敗，使用簡單截取作為後備
+          const cleanContent = entry.content.trim().replace(/\s+/g, ' ');
+          let fallbackSummary = cleanContent.substring(0, 20);
+          // 嘗試在標點符號處截斷
+          const lastPunctuation = Math.max(
+            fallbackSummary.lastIndexOf('，'),
+            fallbackSummary.lastIndexOf('。'),
+            fallbackSummary.lastIndexOf('、'),
+            fallbackSummary.lastIndexOf('；')
+          );
+          if (lastPunctuation > 10) {
+            fallbackSummary = fallbackSummary.substring(0, lastPunctuation + 1);
+          }
+          newSummaries[entry.id] = fallbackSummary + '...';
+        }
+      }
+
+      setTimelineSummaries((prev) => ({ ...prev, ...newSummaries }));
+      setIsGeneratingSummaries(false);
+    };
+
+    generateTimelineSummaries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, biography, entries.length]);
 
   const generateBiography = async () => {
     if (!apiKey || entries.length === 0) {
@@ -287,6 +342,13 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
             {/* 時間軸摘要 */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">時間軸摘要</h2>
+              
+              {isGeneratingSummaries && (
+                <div className="mb-4 text-sm text-gray-500 text-center">
+                  正在生成摘要...
+                </div>
+              )}
+              
               <div className="space-y-3">
                 {(() => {
                   // 按時間排序（年紀或時期）
@@ -329,35 +391,25 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
                       });
                     }
 
-                    // 使用已保存的 AI 摘要，或顯示簡單截取（限制為20個中文字）
-                    const getSummary = (content: string, savedSummary?: string): string => {
-                      if (savedSummary) {
-                        // 如果已有摘要，確保不超過20字
-                        return savedSummary.length > 20 ? savedSummary.substring(0, 20) + '...' : savedSummary;
+                    // 使用 AI 生成的摘要（優先順序：已生成的摘要 > entry.summary > timelineSummaries）
+                    const getSummary = (entry: LifeEntry): string => {
+                      // 優先使用已生成的時間軸摘要
+                      if (timelineSummaries[entry.id]) {
+                        return timelineSummaries[entry.id];
                       }
-                      // 如果內容很短，直接返回
-                      const cleanContent = content.trim().replace(/\s+/g, ' ');
+                      // 其次使用 entry 中保存的摘要
+                      if (entry.summary) {
+                        // 確保不超過20字
+                        return entry.summary.length > 20 ? entry.summary.substring(0, 20) + '...' : entry.summary;
+                      }
+                      // 如果內容很短（少於等於20字），直接返回
+                      const cleanContent = entry.content.trim().replace(/\s+/g, ' ');
                       if (cleanContent.length <= 20) return cleanContent;
-                      
-                      // 嘗試在合適的位置截斷（在標點符號處）
-                      let summary = cleanContent.substring(0, 20);
-                      const lastPunctuation = Math.max(
-                        summary.lastIndexOf('，'),
-                        summary.lastIndexOf('。'),
-                        summary.lastIndexOf('、'),
-                        summary.lastIndexOf('；')
-                      );
-                      
-                      if (lastPunctuation > 10) {
-                        summary = summary.substring(0, lastPunctuation + 1);
-                      } else {
-                        summary = summary.substring(0, 20);
-                      }
-                      
-                      return summary + '...';
+                      // 否則顯示「生成中...」或簡單截取
+                      return cleanContent.substring(0, 20) + '...';
                     };
                     
-                    const summary = getSummary(entry.content, entry.summary);
+                    const summary = getSummary(entry);
 
                     return (
                       <div
