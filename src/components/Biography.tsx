@@ -329,14 +329,32 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
                       });
                     }
 
-                    // 使用已保存的 AI 摘要，或顯示簡單截取
+                    // 使用已保存的 AI 摘要，或顯示簡單截取（限制為20個中文字）
                     const getSummary = (content: string, savedSummary?: string): string => {
-                      if (savedSummary) return savedSummary;
+                      if (savedSummary) {
+                        // 如果已有摘要，確保不超過20字
+                        return savedSummary.length > 20 ? savedSummary.substring(0, 20) + '...' : savedSummary;
+                      }
                       // 如果內容很短，直接返回
                       const cleanContent = content.trim().replace(/\s+/g, ' ');
-                      if (cleanContent.length <= 30) return cleanContent;
-                      // 否則截取前 30 字
-                      return cleanContent.substring(0, 30) + '...';
+                      if (cleanContent.length <= 20) return cleanContent;
+                      
+                      // 嘗試在合適的位置截斷（在標點符號處）
+                      let summary = cleanContent.substring(0, 20);
+                      const lastPunctuation = Math.max(
+                        summary.lastIndexOf('，'),
+                        summary.lastIndexOf('。'),
+                        summary.lastIndexOf('、'),
+                        summary.lastIndexOf('；')
+                      );
+                      
+                      if (lastPunctuation > 10) {
+                        summary = summary.substring(0, lastPunctuation + 1);
+                      } else {
+                        summary = summary.substring(0, 20);
+                      }
+                      
+                      return summary + '...';
                     };
                     
                     const summary = getSummary(entry.content, entry.summary);
