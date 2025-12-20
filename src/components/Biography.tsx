@@ -8,6 +8,7 @@ interface BiographyProps {
   apiKey: string;
   biography: BiographyState | null;
   onBiographyUpdate: (biography: BiographyState) => void;
+  onEntriesUpdate?: (updates: Array<{ id: string; summary: string }>) => void;
 }
 
 export default function Biography({
@@ -15,6 +16,7 @@ export default function Biography({
   apiKey,
   biography,
   onBiographyUpdate,
+  onEntriesUpdate,
 }: BiographyProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string>('');
@@ -41,22 +43,26 @@ export default function Biography({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, apiKey]);
 
-  // 為時間軸摘要生成 AI 摘要
+  // 為時間軸摘要生成 AI 摘要（只在需要時生成，並保存到 entry.summary）
   useEffect(() => {
     if (!apiKey || !biography || entries.length === 0) return;
 
     const generateTimelineSummaries = async () => {
-      setIsGeneratingSummaries(true);
-      const newSummaries: { [key: string]: string } = {};
-
-      // 過濾出需要生成摘要的條目（沒有摘要或內容較長）
+      // 檢查是否有需要生成摘要的條目（沒有摘要且內容較長）
       const entriesToSummarize = entries.filter(
         (entry) => 
           entry.content && 
           entry.content.trim().length > 20 && 
-          !entry.summary &&
-          !timelineSummaries[entry.id]
+          !entry.summary
       );
+
+      if (entriesToSummarize.length === 0) {
+        // 所有條目都有摘要，不需要生成
+        return;
+      }
+
+      setIsGeneratingSummaries(true);
+      const summariesToUpdate: Array<{ id: string; summary: string }> = [];
 
       for (const entry of entriesToSummarize) {
         try {
@@ -65,7 +71,12 @@ export default function Biography({
             content: entry.content,
             maxLength: 20, // 限制為20個中文字
           });
-          newSummaries[entry.id] = summary;
+          
+          // 保存摘要到條目中（通過回調函數更新 entry.summary）
+          summariesToUpdate.push({ id: entry.id, summary });
+          
+          // 同時更新本地狀態以便立即顯示
+          setTimelineSummaries((prev) => ({ ...prev, [entry.id]: summary }));
         } catch (error) {
           console.error(`為條目 ${entry.id} 生成摘要失敗:`, error);
           // 如果生成失敗，使用簡單截取作為後備
@@ -81,17 +92,23 @@ export default function Biography({
           if (lastPunctuation > 10) {
             fallbackSummary = fallbackSummary.substring(0, lastPunctuation + 1);
           }
-          newSummaries[entry.id] = fallbackSummary + '...';
+          const finalSummary = fallbackSummary + '...';
+          summariesToUpdate.push({ id: entry.id, summary: finalSummary });
+          setTimelineSummaries((prev) => ({ ...prev, [entry.id]: finalSummary }));
         }
       }
 
-      setTimelineSummaries((prev) => ({ ...prev, ...newSummaries }));
+      // 批量更新 entries 的 summary 字段
+      if (summariesToUpdate.length > 0 && onEntriesUpdate) {
+        onEntriesUpdate(summariesToUpdate);
+      }
+      
       setIsGeneratingSummaries(false);
     };
 
     generateTimelineSummaries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, biography, entries.length]);
+  }, [apiKey, biography, entries.map(e => `${e.id}-${e.content}`).join(',')]); // 只在 entry 內容變化時重新生成
 
   const generateBiography = async () => {
     if (!apiKey || entries.length === 0) {
@@ -391,21 +408,21 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
                       });
                     }
 
-                    // 使用 AI 生成的摘要（優先順序：已生成的摘要 > entry.summary > timelineSummaries）
+                    // 使用 AI 生成的摘要（優先使用 entry.summary，這是持久化的摘要）
                     const getSummary = (entry: LifeEntry): string => {
-                      // 優先使用已生成的時間軸摘要
-                      if (timelineSummaries[entry.id]) {
-                        return timelineSummaries[entry.id];
-                      }
-                      // 其次使用 entry 中保存的摘要
+                      // 優先使用 entry 中保存的摘要（這是持久化的，不會重複生成）
                       if (entry.summary) {
                         // 確保不超過20字
                         return entry.summary.length > 20 ? entry.summary.substring(0, 20) + '...' : entry.summary;
                       }
+                      // 其次使用臨時生成的摘要（正在生成時顯示）
+                      if (timelineSummaries[entry.id]) {
+                        return timelineSummaries[entry.id];
+                      }
                       // 如果內容很短（少於等於20字），直接返回
                       const cleanContent = entry.content.trim().replace(/\s+/g, ' ');
                       if (cleanContent.length <= 20) return cleanContent;
-                      // 否則顯示「生成中...」或簡單截取
+                      // 否則顯示簡單截取（等待 AI 生成）
                       return cleanContent.substring(0, 20) + '...';
                     };
                     
@@ -471,3 +488,4 @@ ${biography ? `\n**注意：**以下是之前生成的自傳，請在此基礎�
     </div>
   );
 }
+

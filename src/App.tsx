@@ -86,12 +86,31 @@ function App() {
   // 編輯生活片段
   const handleEditEntry = (id: string, updates: Partial<LifeEntry>) => {
     setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
+      prev.map((e) => {
+        if (e.id === id) {
+          // 如果內容被更新，清除摘要以便重新生成
+          if (updates.content && updates.content !== e.content) {
+            return { ...e, ...updates, summary: undefined };
+          }
+          return { ...e, ...updates };
+        }
+        return e;
+      })
     );
     // 如果自傳包含這個內容，需要重新生成
     if (biography && biography.entryIds.includes(id)) {
       setBiography(null);
     }
+  };
+
+  // 批量更新條目的摘要
+  const handleUpdateEntrySummaries = (updates: Array<{ id: string; summary: string }>) => {
+    setEntries((prev) =>
+      prev.map((e) => {
+        const update = updates.find((u) => u.id === e.id);
+        return update ? { ...e, summary: update.summary } : e;
+      })
+    );
   };
 
   // 更新自傳
@@ -198,6 +217,7 @@ function App() {
             apiKey={apiKey}
             biography={biography}
             onBiographyUpdate={handleBiographyUpdate}
+            onEntriesUpdate={handleUpdateEntrySummaries}
           />
         )}
       </div>
